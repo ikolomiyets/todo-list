@@ -1,0 +1,95 @@
+plugins {
+    id 'org.springframework.boot' version '2.1.7.RELEASE'
+    id 'io.spring.dependency-management' version '1.0.8.RELEASE'
+    id 'application'
+    id 'jacoco'
+    id 'com.gradle.build-scan' version '2.3'
+    id 'maven-publish'
+}
+
+
+dependencies {
+    implementation ('org.springframework.boot:spring-boot-starter-web-services')
+    implementation ('org.springframework.boot:spring-boot-starter-data-jpa')
+    implementation ('org.springframework.boot:spring-boot-starter-security')
+    runtime ('com.h2database:h2:1.4.199')
+
+    testImplementation ('org.springframework.boot:spring-boot-starter-test') {
+        exclude group: 'org.hamcrest', module: 'hamcrest-core'
+        exclude group: 'org.skyscreamer', module: 'jsonassert'
+        exclude group: 'junit', module: 'junit'
+    }
+    testImplementation ('org.junit.jupiter:junit-jupiter-api:5.5.1')
+    testRuntimeOnly ('org.junit.jupiter:junit-jupiter-engine:5.5.1')
+
+    components {
+        withModule('org.springframework:spring-beans') {
+            allVariants {
+                withDependencyConstraints {
+                    // Need to patch constraints because snakeyaml is an optional dependency
+                    it.findAll { it.name == 'snakeyaml' }.each { it.version { strictly '1.19' } }
+                }
+            }
+        }
+    }
+}
+
+test {
+    useJUnitPlatform()
+}
+
+def env = System.getenv()
+def buildNumberStr = env['BUILD_NUMBER']
+if (!buildNumberStr) {
+    buildNumberStr = '0'
+}
+
+def theVersion = artifactVersion
+if (!theVersion) {
+    theVersion = env['BASE_VERSION']
+}
+version = theVersion + "." + buildNumberStr
+
+sourceCompatibility = compatibility
+targetCompatibility = compatibility
+
+mainClassName = 'io.iktech.demo.ToDoListApplication'
+ext['junit-jupiter.version'] = '5.5.1'
+
+buildScan {
+    // always accept the terms of service
+    termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+    termsOfServiceAgree = 'yes'
+
+    // always publish a build scan
+    publishAlways()
+}
+
+jacoco {
+  toolVersion = "0.8.4"
+}
+
+repositories {
+    maven {
+        url "${nexusUrl}/repository/${nexus_download_path}"
+        credentials {
+            username = "${nexusUsername}"
+            password = "${nexusPassword}"
+        }
+    }
+    mavenLocal()
+}
+
+publishing {
+    repositories {
+        maven {
+            url "${nexusUrl}/repository/${nexus_upload_path}"
+            credentials {
+                username = "${nexusUsername}"
+                password = "${nexusPassword}"
+            }
+        }
+    }
+}
+
+
